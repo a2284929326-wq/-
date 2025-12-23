@@ -3,44 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Christmas Miracle - Light Follow</title>
+    <title>Christmas Miracle - Gold & Silver</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; }
         #loader { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; justify-content: center; align-items: center; color: #fff; transition: opacity 1s; letter-spacing: 2px; }
         #blessing {
-            position: fixed; top: 12%; width: 100%; text-align: center;
+            position: fixed; top: 10%; width: 100%; text-align: center;
             background: linear-gradient(to bottom, #fff6ad 0%, #ffcc33 50%, #d4a017 100%);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            font-size: 34px; font-weight: 900; z-index: 5; opacity: 0; pointer-events: none;
-            transition: all 1.5s ease; filter: drop-shadow(0 0 15px rgba(255, 204, 51, 0.6));
+            font-size: 36px; font-weight: 900; z-index: 5; opacity: 0; pointer-events: none;
+            transition: all 1.5s cubic-bezier(0.19, 1, 0.22, 1); filter: drop-shadow(0 0 20px rgba(255, 204, 51, 0.8));
         }
         #photo-container {
-            position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
-            width: 260px; height: 260px; border-radius: 50%; border: 4px solid #ffcc33;
-            box-shadow: 0 0 60px rgba(255, 204, 51, 0.5); overflow: hidden; z-index: 4; display: none; opacity: 0; transition: all 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) scale(0.4);
+            width: 280px; height: 280px; border-radius: 50%; border: 5px solid #ffcc33;
+            box-shadow: 0 0 80px rgba(255, 204, 51, 0.6); overflow: hidden; z-index: 4; display: none; opacity: 0; transition: all 1.2s ease;
         }
         #user-photo { width: 100%; height: 100%; object-fit: cover; }
-        #hint { position: fixed; bottom: 30px; width: 100%; text-align: center; color: #fff; font-size: 12px; letter-spacing: 4px; z-index: 10; opacity: 0.3; }
+        #hint { position: fixed; bottom: 30px; width: 100%; text-align: center; color: #fff; font-size: 12px; letter-spacing: 5px; z-index: 10; opacity: 0.4; }
     </style>
     <script type="importmap"> { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } } </script>
 </head>
 <body>
-<div id="loader">✨ Preparing Light Magic...</div>
+<div id="loader">✨ 正在构筑璀璨星空...</div>
 <div id="blessing">黄海玲 圣诞节快乐</div>
 <div id="photo-container"><img id="user-photo" src="" alt="Surprise"></div>
-<div id="hint">点击屏幕 • 唤醒追光</div>
+<div id="hint">点击屏幕 • 开启璀璨</div>
 
 <script type="module">
     import * as THREE from 'three';
     let scene, camera, renderer, particles, clock;
     let STATE = { MODE: 'TREE' };
     const PHOTO_NAME = "123456.jpg"; 
-    const COUNT = 8500; 
+    const COUNT = 12000; // 极高密度粒子
 
     function init() {
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 1, 1000);
-        camera.position.z = 75;
+        camera.position.z = 80;
         clock = new THREE.Clock();
 
         renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -51,38 +51,37 @@
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(COUNT * 3);
         const colors = new Float32Array(COUNT * 3);
-        const sizes = new Float32Array(COUNT);
-        
-        // 存储原始位置和追随偏移
         const treeBasePos = [], scatterPos = [], offsets = [];
 
         for(let i=0; i<COUNT; i++) {
             const t = i / COUNT;
-            const angle = t * Math.PI * 85 + (i % 4) * (Math.PI / 2); 
-            const r = 24 * (1 - t);
-            
+            // 圣诞树：银白螺旋
+            const angle = t * Math.PI * 90 + (i % 6) * (Math.PI / 3); 
+            const r = 26 * (1 - t);
             const x = Math.cos(angle) * r;
-            const y = t * 48 - 24;
+            const y = t * 50 - 25;
             const z = Math.sin(angle) * r;
-            
             treeBasePos.push({ x, y, z, r, angle });
-            offsets.push(Math.random() * Math.PI * 2); // 随机追随相位
             
-            const sPos = new THREE.Vector3().setFromSphericalCoords(45 + Math.random()*15, Math.random()*Math.PI, Math.random()*Math.PI*2);
+            // 星空：极其宽广的金色包围
+            const sPos = new THREE.Vector3().setFromSphericalCoords(
+                40 + Math.random() * 25, 
+                Math.random() * Math.PI, 
+                Math.random() * Math.PI * 2
+            );
             scatterPos.push(sPos);
+            offsets.push(Math.random() * 10);
 
             positions[i*3] = x; positions[i*3+1] = y; positions[i*3+2] = z;
             colors[i*3] = 1; colors[i*3+1] = 1; colors[i*3+2] = 1; 
-            sizes[i] = Math.random() * 0.5 + 0.2;
         }
 
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
         const material = new THREE.PointsMaterial({
-            size: 0.6,
-            map: createCircleTexture(),
+            size: 0.55,
+            map: createSparkleTexture(),
             transparent: true,
             blending: THREE.AdditiveBlending,
             vertexColors: true,
@@ -98,32 +97,32 @@
             STATE.MODE = STATE.MODE === 'TREE' ? 'SCATTER' : 'TREE';
             const isScatter = STATE.MODE === 'SCATTER';
             document.getElementById('blessing').style.opacity = isScatter ? '1' : '0';
+            document.getElementById('blessing').style.transform = isScatter ? 'translateY(0)' : 'translateY(-20px)';
             const pc = document.getElementById('photo-container');
             if(isScatter) {
                 pc.style.display = 'block';
                 setTimeout(() => { pc.style.opacity = '1'; pc.style.transform = 'translate(-50%, -50%) scale(1)'; }, 20);
             } else {
                 pc.style.opacity = '0';
+                pc.style.transform = 'translate(-50%, -50%) scale(0.4)';
                 setTimeout(() => { if(STATE.MODE==='TREE') pc.style.display = 'none'; }, 800);
             }
         });
 
         document.getElementById('loader').style.opacity = '0';
         setTimeout(() => document.getElementById('loader').remove(), 1000);
-        
         animate(treeBasePos, scatterPos, offsets);
     }
 
-    function createCircleTexture() {
+    function createSparkleTexture() {
         const canvas = document.createElement('canvas');
         canvas.width = 64; canvas.height = 64;
         const ctx = canvas.getContext('2d');
-        const grad = ctx.createRadialGradient(32,32,0,32,32,32);
-        grad.addColorStop(0, 'white');
-        grad.addColorStop(0.2, 'rgba(230,240,255,0.8)');
-        grad.addColorStop(0.5, 'rgba(100,150,255,0.2)');
-        grad.addColorStop(1, 'transparent');
-        ctx.fillStyle = grad; ctx.fillRect(0,0,64,64);
+        const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+        grad.addColorStop(0, 'rgba(255,255,255,1)');
+        grad.addColorStop(0.3, 'rgba(255,255,255,0.8)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, 64, 64);
         return new THREE.CanvasTexture(canvas);
     }
 
@@ -137,34 +136,30 @@
         for(let i=0; i<COUNT; i++) {
             let tx, ty, tz;
             if(!isScatter) {
-                // 追随算法：在基础螺旋上加入基于时间的正弦波动
-                const base = treeBasePos[i];
-                const wave = Math.sin(time * 2 + base.y * 0.5 + offsets[i]) * 0.8;
-                tx = Math.cos(base.angle + time * 0.5) * (base.r + wave);
-                ty = base.y;
-                tz = Math.sin(base.angle + time * 0.5) * (base.r + wave);
+                const b = treeBasePos[i];
+                // 追随算法：螺旋路径上的动态波动
+                const s = Math.sin(time * 1.5 + b.y * 0.2 + offsets[i] * 0.1);
+                tx = Math.cos(b.angle + time * 0.4) * (b.r + s);
+                ty = b.y;
+                tz = Math.sin(b.angle + time * 0.4) * (b.r + s);
+                
+                // 银白色彩
+                colAttr.array[i*3] = 0.9; colAttr.array[i*3+1] = 0.95; colAttr.array[i*3+2] = 1.0;
             } else {
                 tx = scatterPos[i].x; ty = scatterPos[i].y; tz = scatterPos[i].z;
-            }
-
-            posAttr.array[i*3] += (tx - posAttr.array[i*3]) * 0.08;
-            posAttr.array[i*3+1] += (ty - posAttr.array[i*3+1]) * 0.08;
-            posAttr.array[i*3+2] += (tz - posAttr.array[i*3+2]) * 0.08;
-
-            if(isScatter) { // 金沙星空
+                // 金色彩：璀璨金沙
                 colAttr.array[i*3] += (1.0 - colAttr.array[i*3]) * 0.05;
                 colAttr.array[i*3+1] += (0.85 - colAttr.array[i*3+1]) * 0.05;
                 colAttr.array[i*3+2] += (0.1 - colAttr.array[i*3+2]) * 0.05;
-            } else { // 银白追光
-                const glow = (Math.sin(time * 3 + i * 0.1) + 1) * 0.5;
-                colAttr.array[i*3] = 0.8 + glow * 0.2;
-                colAttr.array[i*3+1] = 0.9 + glow * 0.1;
-                colAttr.array[i*3+2] = 1.0;
             }
+
+            posAttr.array[i*3] += (tx - posAttr.array[i*3]) * 0.07;
+            posAttr.array[i*3+1] += (ty - posAttr.array[i*3+1]) * 0.07;
+            posAttr.array[i*3+2] += (tz - posAttr.array[i*3+2]) * 0.07;
         }
         posAttr.needsUpdate = true;
         colAttr.needsUpdate = true;
-        particles.rotation.y += 0.002;
+        particles.rotation.y += isScatter ? 0.001 : 0.003;
         renderer.render(scene, camera);
     }
 
