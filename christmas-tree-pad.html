@@ -2,113 +2,26 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>圣诞树 | 手机优化版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试页面</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; }
-        #loader { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #d4af37; }
-        .spinner { width: 40px; height: 40px; border: 2px solid transparent; border-top: 2px solid #d4af37; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        #skip-btn { margin-top: 20px; padding: 10px 20px; border: 1px solid #d4af37; background: transparent; color: #d4af37; cursor: pointer; display: none; }
-        #ui-hint { position: fixed; bottom: 20px; width: 100%; text-align: center; color: rgba(212,175,55,0.6); font-size: 12px; pointer-events: none; }
-    </style>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
-                "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs"
-            }
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
         }
-    </script>
+        h1 {
+            font-size: 100px;
+            color: #d4af37;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+    </style>
 </head>
 <body>
-
-<div id="loader">
-    <div class="spinner"></div>
-    <div id="load-text">正在加载节日魔法...</div>
-    <button id="skip-btn" onclick="startWithoutAI()">直接进入 (点击屏幕控制)</button>
-</div>
-
-<div id="ui-hint">手势控制或点击屏幕切换状态</div>
-<video id="webcam" style="display:none" autoplay playsinline></video>
-
-<script type="module">
-    import * as THREE from 'three';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
-
-    let STATE = { MODE: 'TREE' };
-    let scene, camera, renderer, particles = [], mainGroup;
-
-    // 初始化 3D 场景
-    function initThree() {
-        scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 1000);
-        camera.position.set(0, 5, 50);
-        renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        document.body.appendChild(renderer.domElement);
-
-        mainGroup = new THREE.Group();
-        scene.add(mainGroup);
-        scene.add(new THREE.AmbientLight(0xffffff, 1));
-
-        for(let i=0; i<800; i++) {
-            const geo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-            const mat = new THREE.MeshBasicMaterial({ color: i%5===0 ? 0xff0000 : 0xd4af37 });
-            const mesh = new THREE.Mesh(geo, mat);
-            const t = i/800;
-            const angle = t * 40;
-            const r = 10 * (1-t);
-            mesh.userData.treePos = new THREE.Vector3(Math.cos(angle)*r, t*25-10, Math.sin(angle)*r);
-            mesh.userData.scatterPos = new THREE.Vector3().setFromSphericalCoords(20, Math.random()*Math.PI, Math.random()*Math.PI*2);
-            mainGroup.add(mesh);
-            particles.push(mesh);
-        }
-
-        window.addEventListener('click', () => {
-            STATE.MODE = (STATE.MODE === 'TREE') ? 'SCATTER' : 'TREE';
-        });
-
-        animate();
-    }
-
-    function animate() {
-        requestAnimationFrame(animate);
-        particles.forEach(p => {
-            const target = (STATE.MODE === 'TREE') ? p.userData.treePos : p.userData.scatterPos;
-            p.position.lerp(target, 0.05);
-            p.rotation.x += 0.01;
-        });
-        mainGroup.rotation.y += 0.005;
-        renderer.render(scene, camera);
-    }
-
-    // 尝试启动 AI
-    async function initAI() {
-        setTimeout(() => { document.getElementById('skip-btn').style.display = 'block'; }, 3000);
-        try {
-            const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
-            const handLandmarker = await HandLandmarker.createFromOptions(vision, {
-                baseOptions: { modelAssetPath: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/hand_landmarker.task" },
-                runningMode: "VIDEO"
-            });
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            document.getElementById('webcam').srcObject = stream;
-            document.getElementById('loader').remove();
-        } catch (e) {
-            console.log("AI启动跳过，切换手动模式");
-        }
-    }
-
-    window.startWithoutAI = function() {
-        document.getElementById('loader').remove();
-    }
-
-    initThree();
-    initAI();
-</script>
+    <h1>你好</h1>
 </body>
 </html>
