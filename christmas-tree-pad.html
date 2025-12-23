@@ -3,71 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>给黄海玲的圣诞魔法 • 手势增强版</title>
+    <title>给黄海玲的圣诞魔法</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
+        #video-input { position: fixed; width: 1px; height: 1px; opacity: 0; }
         
-        /* 隐藏摄像头预览，仅用于检测 */
-        #video-input { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+        /* 状态指示灯：帮助你确认摄像头是否在工作 */
+        #status-dot { position: fixed; top: 10px; left: 10px; width: 8px; height: 8px; border-radius: 50%; background: red; z-index: 1000; transition: background 0.3s; }
+        #status-text { position: fixed; top: 8px; left: 25px; color: #fff; font-size: 10px; z-index: 1000; opacity: 0.5; }
 
-        #loader { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #ffcc33; transition: opacity 1s; }
-        .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,204,51,0.2); border-top-color: #ffcc33; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+        #loader { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #ffcc33; }
+        .spinner { width: 30px; height: 30px; border: 2px solid rgba(255,204,51,0.2); border-top-color: #ffcc33; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        #blessing {
-            position: fixed; top: 15%; width: 100%; text-align: center;
-            background: linear-gradient(to bottom, #fff6ad 0%, #ffcc33 50%, #d4a017 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            font-size: 32px; font-weight: 900; z-index: 5; opacity: 0; pointer-events: none;
-            transition: all 0.8s ease; filter: drop-shadow(0 0 10px rgba(255, 204, 51, 0.8));
-            animation: goldenGlow 2s infinite alternate;
-        }
-
-        @keyframes goldenGlow {
-            from { filter: drop-shadow(0 0 8px rgba(255, 204, 51, 0.6)); transform: scale(1); }
-            to { filter: drop-shadow(0 0 20px rgba(255, 204, 51, 0.9)); transform: scale(1.05); }
-        }
-
-        #photo-container {
-            position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
-            width: 250px; height: 250px; border-radius: 50%; border: 4px solid #ffcc33;
-            box-shadow: 0 0 50px rgba(212, 160, 23, 0.8); overflow: hidden; z-index: 4; 
-            display: none; opacity: 0; transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
+        #blessing { position: fixed; top: 15%; width: 100%; text-align: center; background: linear-gradient(to bottom, #fff6ad 0%, #ffcc33 50%, #d4a017 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; font-weight: 900; z-index: 5; opacity: 0; transition: 0.8s; filter: drop-shadow(0 0 10px rgba(255, 204, 51, 0.8)); }
+        #photo-container { position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: 250px; height: 250px; border-radius: 50%; border: 4px solid #ffcc33; box-shadow: 0 0 50px rgba(212, 160, 23, 0.8); overflow: hidden; z-index: 4; display: none; opacity: 0; transition: 0.8s; }
         #user-photo { width: 100%; height: 100%; object-fit: cover; }
-
-        #hint { position: fixed; bottom: 30px; width: 100%; text-align: center; color: #d4a017; font-size: 13px; letter-spacing: 2px; z-index: 10; }
+        #hint { position: fixed; bottom: 30px; width: 100%; text-align: center; color: #d4a017; font-size: 13px; z-index: 10; }
     </style>
 
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    
-    <script type="importmap"> { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } } </script>
+    <script src="https://unpkg.com/@mediapipe/hands/hands.js"></script>
+    <script src="https://unpkg.com/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script type="importmap"> { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } } </script>
 </head>
 <body>
 
-<video id="video-input"></video>
-<div id="loader"><div class="spinner"></div>正在激活手势感应魔法...</div>
+<div id="status-dot"></div>
+<div id="status-text">感应器未连接</div>
+<video id="video-input" playsinline></video>
+
+<div id="loader"><div class="spinner"></div>正在连接手势感应器...</div>
 <div id="blessing">黄海玲 圣诞节快乐</div>
-<div id="photo-container"><img id="user-photo" src="" alt="Christmas Surprise"></div>
-<div id="hint">请面对镜头：合拢手掌为树 • 张开手掌为星</div>
+<div id="photo-container"><img id="user-photo" src="https://raw.githubusercontent.com/a2284929326-wq/-/main/123456.jpg" alt="Surprise"></div>
+<div id="hint">请授权摄像头：合手为树 • 张手为星</div>
 
 <script type="module">
     import * as THREE from 'three';
 
     let scene, camera, renderer, mainGroup, particles = [];
     let STATE = { MODE: 'TREE' };
-    const PHOTO_NAME = "https://raw.githubusercontent.com/a2284929326-wq/-/main/123456.jpg";
 
-    // --- 初始化 Three.js 场景 ---
+    // --- 3D 场景初始化 ---
     function initThree() {
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 1, 1000);
         camera.position.z = 55;
-
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
 
         mainGroup = new THREE.Group();
@@ -77,49 +60,84 @@
         canvas.width = 64; canvas.height = 64;
         const ctx = canvas.getContext('2d');
         const grad = ctx.createRadialGradient(32,32,0,32,32,32);
-        grad.addColorStop(0, 'rgba(255,255,255,1)');
-        grad.addColorStop(0.3, 'rgba(255,215,0,0.9)');
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        grad.addColorStop(0, '#fff'); grad.addColorStop(0.3, '#ffd700'); grad.addColorStop(1, 'transparent');
         ctx.fillStyle = grad; ctx.fillRect(0,0,64,64);
         const texture = new THREE.CanvasTexture(canvas);
 
         for(let i=0; i<3000; i++) {
-            const mat = new THREE.PointsMaterial({
-                size: Math.random() * 0.8 + 0.3,
-                map: texture, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
-                color: i % 15 === 0 ? 0xffffff : 0xffcc33 
-            });
+            const mat = new THREE.PointsMaterial({ size: Math.random()*0.8+0.3, map: texture, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, color: 0xffcc33 });
             const p = new THREE.Points(new THREE.BufferGeometry(), mat);
             p.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
-            
             const t = i / 3000;
             const angle = t * Math.PI * 60;
             const r = 16 * (1 - t);
             p.userData.treePos = new THREE.Vector3(Math.cos(angle)*r, t*38 - 19, Math.sin(angle)*r);
-            p.userData.scatterPos = new THREE.Vector3().setFromSphericalCoords(35 + Math.random()*5, Math.random()*Math.PI, Math.random()*Math.PI*2);
+            p.userData.scatterPos = new THREE.Vector3().setFromSphericalCoords(35+Math.random()*5, Math.random()*Math.PI, Math.random()*Math.PI*2);
             p.position.copy(p.userData.treePos);
             mainGroup.add(p);
             particles.push(p);
         }
-
-        document.getElementById('user-photo').src = PHOTO_NAME;
         animate();
     }
 
-    // --- 状态切换动画 ---
-    function updateState(mode) {
+    function animate() {
+        requestAnimationFrame(animate);
+        particles.forEach(p => {
+            const target = STATE.MODE === 'TREE' ? p.userData.treePos : p.userData.scatterPos;
+            p.position.lerp(target, 0.08);
+        });
+        mainGroup.rotation.y += 0.005;
+        renderer.render(scene, camera);
+    }
+
+    // --- 手势控制逻辑 ---
+    async function startTracking() {
+        const videoElement = document.getElementById('video-input');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+
+        const hands = new Hands({
+            locateFile: (file) => `https://unpkg.com/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+
+        hands.onResults((results) => {
+            // 如果能检测到手，指示灯变绿
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                statusDot.style.background = '#00ff00';
+                statusText.innerText = "感应中...";
+                const landmarks = results.multiHandLandmarks[0];
+                // 判定是否张开：中指指尖高度低于第二个关节
+                const isOpen = landmarks[12].y < landmarks[10].y; 
+                toggleMagic(isOpen ? 'SCATTER' : 'TREE');
+            } else {
+                statusDot.style.background = '#ffcc33';
+                statusText.innerText = "请举起手掌";
+            }
+        });
+
+        const cam = new Camera(videoElement, {
+            onFrame: async () => { await hands.send({image: videoElement}); },
+            width: 640, height: 480
+        });
+
+        cam.start().then(() => {
+            document.getElementById('loader').style.display = 'none';
+            statusDot.style.background = '#ffcc33';
+            statusText.innerText = "等待手势...";
+        }).catch(err => {
+            alert("摄像头启动失败，请确保使用 HTTPS 协议或本地服务器运行，并授予权限。");
+        });
+    }
+
+    function toggleMagic(mode) {
         if (STATE.MODE === mode) return;
         STATE.MODE = mode;
-
-        const isScatter = mode === 'SCATTER';
-        const bl = document.getElementById('blessing');
+        const isS = mode === 'SCATTER';
+        document.getElementById('blessing').style.opacity = isS ? '1' : '0';
         const pc = document.getElementById('photo-container');
-        const ht = document.getElementById('hint');
-
-        bl.style.opacity = isScatter ? '1' : '0';
-        ht.style.color = isScatter ? '#fff' : '#d4a017';
-
-        if(isScatter) {
+        if(isS) {
             pc.style.display = 'block';
             setTimeout(() => { pc.style.opacity = '1'; pc.style.transform = 'translate(-50%, -50%) scale(1)'; }, 20);
         } else {
@@ -129,70 +147,8 @@
         }
     }
 
-    function animate() {
-        requestAnimationFrame(animate);
-        particles.forEach(p => {
-            const target = STATE.MODE === 'TREE' ? p.userData.treePos : p.userData.scatterPos;
-            p.position.lerp(target, 0.08); // 稍微加快跟随速度
-        });
-        mainGroup.rotation.y += 0.005; 
-        renderer.render(scene, camera);
-    }
-
-    // --- MediaPipe 手势识别逻辑 ---
-    async function initHandTracking() {
-        const videoElement = document.getElementById('video-input');
-        const hands = new Hands({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-        });
-
-        hands.setOptions({
-            maxNumHands: 1,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
-        });
-
-        hands.onResults((results) => {
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                const landmarks = results.multiHandLandmarks[0];
-                
-                // 判断逻辑：判断 4 根手指是否伸出
-                // 比较指尖(tip)和第二个关节(pip)的 Y 坐标（在屏幕坐标系中，Y越小越靠上）
-                const isExtended = [8, 12, 16, 20].filter(i => landmarks[i].y < landmarks[i-2].y).length >= 3;
-
-                if (isExtended) {
-                    updateState('SCATTER'); // 张开手掌 -> 粒子
-                } else {
-                    updateState('TREE');    // 合拢手掌 -> 圣诞树
-                }
-            }
-        });
-
-        const cameraFeed = new Camera(videoElement, {
-            onFrame: async () => {
-                await hands.send({image: videoElement});
-            },
-            width: 640,
-            height: 480
-        });
-
-        cameraFeed.start().then(() => {
-            // 启动成功后移除加载层
-            document.getElementById('loader').style.opacity = '0';
-            setTimeout(() => document.getElementById('loader').remove(), 1000);
-        });
-    }
-
-    // 启动
     initThree();
-    initHandTracking();
-
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    startTracking();
 </script>
 </body>
 </html>
