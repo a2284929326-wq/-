@@ -6,16 +6,15 @@
     <title>给黄海玲的圣诞魔法</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
-        #video-input { position: fixed; width: 80px; height: 60px; bottom: 10px; right: 10px; z-index: 1000; border-radius: 8px; border: 1px solid #ffcc33; transform: scaleX(-1); opacity: 0.3; }
+        #video-input { position: fixed; width: 60px; height: 45px; bottom: 10px; right: 10px; z-index: 1000; border-radius: 5px; opacity: 0.2; transform: scaleX(-1); }
         
-        #status-bar { position: fixed; top: 15px; left: 15px; display: flex; align-items: center; z-index: 1000; background: rgba(0,0,0,0.5); padding: 5px 12px; border-radius: 20px; }
-        #status-dot { width: 10px; height: 10px; border-radius: 50%; background: #ffcc33; margin-right: 8px; box-shadow: 0 0 10px #ffcc33; }
-        #status-text { color: #fff; font-size: 12px; letter-spacing: 1px; }
+        #status-bar { position: fixed; top: 15px; left: 15px; z-index: 1000; display: flex; align-items: center; color: #fff; font-size: 12px; }
+        #status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ffcc33; margin-right: 6px; }
 
-        #blessing { position: fixed; top: 15%; width: 100%; text-align: center; background: linear-gradient(to bottom, #fff6ad 0%, #ffcc33 50%, #d4a017 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; font-weight: 900; z-index: 5; opacity: 0; transition: 0.6s; }
-        #photo-container { position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: 260px; height: 260px; border-radius: 50%; border: 4px solid #ffcc33; box-shadow: 0 0 60px rgba(212, 160, 23, 0.9); overflow: hidden; z-index: 4; display: none; opacity: 0; transition: 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #blessing { position: fixed; top: 15%; width: 100%; text-align: center; background: linear-gradient(to bottom, #fff6ad 0%, #ffcc33 50%, #d4a017 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; font-weight: 900; z-index: 5; opacity: 0; transition: 0.6s; pointer-events: none; }
+        #photo-container { position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: 260px; height: 260px; border-radius: 50%; border: 4px solid #ffcc33; box-shadow: 0 0 60px rgba(212, 160, 23, 0.9); overflow: hidden; z-index: 4; display: none; opacity: 0; transition: 0.8s; }
         #user-photo { width: 100%; height: 100%; object-fit: cover; }
-        #hint { position: fixed; bottom: 80px; width: 100%; text-align: center; color: #d4a017; font-size: 14px; z-index: 10; font-weight: bold; text-shadow: 0 0 5px #000; }
+        #hint { position: fixed; bottom: 60px; width: 100%; text-align: center; color: #d4a017; font-size: 13px; z-index: 10; opacity: 0.8; }
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
@@ -24,12 +23,12 @@
 </head>
 <body>
 
-<div id="status-bar"><div id="status-dot"></div><div id="status-text">初始化中...</div></div>
+<div id="status-bar"><div id="status-dot"></div><span id="status-text">感应器加载中...</span></div>
 <video id="video-input" playsinline></video>
 
 <div id="blessing">黄海玲 圣诞节快乐</div>
 <div id="photo-container"><img id="user-photo" src="https://raw.githubusercontent.com/a2284929326-wq/-/main/123456.jpg"></div>
-<div id="hint">请举起手掌：合手为树 • 张手为星</div>
+<div id="hint">手势感应中 • 点击屏幕亦可交互</div>
 
 <script type="module">
     import * as THREE from 'three';
@@ -37,11 +36,12 @@
     let scene, camera, renderer, mainGroup, particles = [];
     let STATE = { MODE: 'TREE' };
 
+    // --- 3D 渲染核心 ---
     function initThree() {
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 1, 1000);
         camera.position.z = 60;
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
@@ -57,15 +57,15 @@
         ctx.fillStyle = grad; ctx.fillRect(0,0,64,64);
         const texture = new THREE.CanvasTexture(canvas);
 
-        for(let i=0; i<3000; i++) {
+        for(let i=0; i<2500; i++) {
             const mat = new THREE.PointsMaterial({ size: Math.random()*0.9+0.4, map: texture, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, color: 0xffcc33 });
             const p = new THREE.Points(new THREE.BufferGeometry(), mat);
             p.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
-            const t = i / 3000;
-            const angle = t * Math.PI * 65;
+            const t = i / 2500;
+            const angle = t * Math.PI * 60;
             const r = 18 * (1 - t);
             p.userData.treePos = new THREE.Vector3(Math.cos(angle)*r, t*42 - 21, Math.sin(angle)*r);
-            p.userData.scatterPos = new THREE.Vector3().setFromSphericalCoords(38+Math.random()*8, Math.random()*Math.PI, Math.random()*Math.PI*2);
+            p.userData.scatterPos = new THREE.Vector3().setFromSphericalCoords(35+Math.random()*10, Math.random()*Math.PI, Math.random()*Math.PI*2);
             p.position.copy(p.userData.treePos);
             mainGroup.add(p);
             particles.push(p);
@@ -77,51 +77,13 @@
         requestAnimationFrame(animate);
         particles.forEach(p => {
             const target = STATE.MODE === 'TREE' ? p.userData.treePos : p.userData.scatterPos;
-            p.position.lerp(target, 0.1); 
+            p.position.lerp(target, 0.08); 
         });
-        mainGroup.rotation.y += 0.006;
+        mainGroup.rotation.y += 0.005;
         renderer.render(scene, camera);
     }
 
-    async function startTracking() {
-        const videoElement = document.getElementById('video-input');
-        const statusDot = document.getElementById('status-dot');
-        const statusText = document.getElementById('status-text');
-
-        const hands = new Hands({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-        });
-
-        // 优化：平衡检测速度和准确率
-        hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.4, minTrackingConfidence: 0.4 });
-
-        hands.onResults((results) => {
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                statusDot.style.background = '#00ff00';
-                statusDot.style.boxShadow = '0 0 15px #00ff00';
-                statusText.innerText = "感应中...";
-                
-                const landmarks = results.multiHandLandmarks[0];
-                // 简化判断：中指指尖(12) 高于 指根(9)
-                const isOpen = landmarks[12].y < landmarks[9].y;
-                toggleMagic(isOpen ? 'SCATTER' : 'TREE');
-            } else {
-                statusDot.style.background = '#ffcc33';
-                statusDot.style.boxShadow = '0 0 10px #ffcc33';
-                statusText.innerText = "等待手势...";
-            }
-        });
-
-        const cam = new Camera(videoElement, {
-            onFrame: async () => { await hands.send({image: videoElement}); },
-            width: 480, height: 360
-        });
-
-        cam.start().then(() => {
-            statusText.innerText = "手势已就绪";
-        });
-    }
-
+    // --- 交互切换 ---
     function toggleMagic(mode) {
         if (STATE.MODE === mode) return;
         STATE.MODE = mode;
@@ -138,15 +100,40 @@
         }
     }
 
+    // --- 手势追踪 ---
+    async function startTracking() {
+        try {
+            const videoElement = document.getElementById('video-input');
+            const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+            hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.5 });
+            hands.onResults((results) => {
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    document.getElementById('status-dot').style.background = '#00ff00';
+                    document.getElementById('status-text').innerText = "感应生效中";
+                    const lm = results.multiHandLandmarks[0];
+                    toggleMagic(lm[12].y < lm[9].y ? 'SCATTER' : 'TREE');
+                }
+            });
+            const cam = new Camera(videoElement, {
+                onFrame: async () => { await hands.send({image: videoElement}); },
+                width: 480, height: 360
+            });
+            cam.start();
+        } catch (e) {
+            document.getElementById('status-text').innerText = "手动模式已激活";
+        }
+    }
+
+    // --- 启动与兜底逻辑 ---
     initThree();
     startTracking();
 
-    // 处理窗口大小变化
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+    // 兜底：点击屏幕手动切换状态
+    window.addEventListener('click', () => {
+        const nextMode = STATE.MODE === 'TREE' ? 'SCATTER' : 'TREE';
+        toggleMagic(nextMode);
     });
+
 </script>
 </body>
 </html>
