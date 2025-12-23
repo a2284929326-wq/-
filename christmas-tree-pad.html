@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圣诞树 | 镜像加速版</title>
+    <link href="https://fonts.loli.net/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --gold: #d4af37; --cream: #fceea7; --black: #000000; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--black); color: var(--cream); font-family: 'Times New Roman', serif; overflow: hidden; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; display: flex; flex-direction: column; align-items: center; pointer-events: none; transition: opacity 0.8s ease; }
+        .ui-hidden { opacity: 0 !important; pointer-events: none !important; }
+        h1 { font-family: 'Cinzel', serif; font-size: clamp(32px, 8vw, 56px); margin-top: 40px; background: linear-gradient(to bottom, #ffffff, var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.5)); letter-spacing: 4px; text-align: center; }
+        .upload-wrapper { position: absolute; bottom: 80px; padding: 15px 30px; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); border: 1px solid var(--gold); border-radius: 4px; cursor: pointer; pointer-events: auto; transition: all 0.3s ease; }
+        .upload-wrapper:hover { background: rgba(212, 175, 55, 0.2); }
+        .upload-wrapper input { display: none; }
+        #loader { position: fixed; inset: 0; background: var(--black); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s ease; }
+        .spinner { width: 40px; height: 40px; border: 1px solid transparent; border-top: 1px solid var(--gold); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        #cv-container { position: absolute; bottom: 20px; right: 20px; opacity: 0; pointer-events: none; }
+        .hint-text { margin-top: 15px; font-size: 10px; color: var(--gold); opacity: 0.6; letter-spacing: 1px; text-align: center; }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+                "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs"
+            }
+        }
+    </script>
+</head>
+<body>
+
+<div id="loader">
+    <div class="spinner"></div>
+    <div style="letter-spacing: 4px; font-size: 12px; color: #d4af37;">加载节日魔法中...</div>
+</div>
+
+<div id="ui-layer">
+    <h1>Merry Christmas</h1>
+    <label class="upload-wrapper">
+        <span>上传照片</span>
+        <input type="file" id="photo-upload" accept="image/*">
+    </label>
+    <div class="hint-text" style="position:absolute; bottom:40px;">按下 'H' 键隐藏界面<br>手势：握拳(树) / 张开(散开) / 捏合(聚焦)</div>
+</div>
+
+<div id="cv-container">
+    <video id="webcam" autoplay playsinline></video>
+</div>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
+
+    const STATE = { MODE: 'TREE', T: 0, FOCUS_TARGET: null };
+
+    class HolidayParticle {
+        constructor(scene, type) {
+            let geometry, material;
+            if (type === 'box') {
+                geometry = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+                material = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.1 });
+            } else if (type === 'sphere') {
+                geometry = new THREE.SphereGeometry(0.4, 16, 16);
+                material = new THREE.MeshPhysicalMaterial({ color: Math.random() > 0.5 ? 0xd4af37 : 0xaa0000, clearcoat: 1.0, metalness: 0.5 });
+            } else {
+                const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(0,0,0), new THREE.Vector3(0,1.5,0), new THREE.Vector3(-0.5,1.8,0), new THREE.Vector3(-0.8,1.5,0)]);
+                geometry = new THREE.TubeGeometry(curve, 12, 0.1, 8, false);
+                material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            }
+            this.mesh = new THREE.Mesh(geometry, material);
+            this.scatterPos = new THREE.Vector3().setFromSphericalCoords(10 + Math.random()*10, Math.random()*Math.PI, Math.random()*Math.PI*2);
+            this.treePos = new THREE.Vector3();
+            scene.add(this.mesh);
+        }
+        update(mode, focus) {
+            let target = (mode === 'TREE') ? this.treePos : this.scatterPos;
+            if (mode === 'FOCUS' && focus === this) target = new THREE.Vector3(0,2,35);
+            this.mesh.position.lerp(target, 0.05);
+            this.mesh.rotation.x += 0.01; this.mesh.rotation.y += 0.01;
+        }
+    }
+
+    class App {
+        constructor() {
+            this.initScene();
+            this.initParticles();
+            this.initAI();
+            this.bindEvents();
+            this.animate();
+        }
+
+        initScene() {
+            this.scene = new THREE.Scene();
+            this.camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 1000);
+            this.camera.position.set(0, 5, 50);
+            this.renderer = new THREE.WebGLRenderer({ antialias: true });
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.renderer.toneMapping = THREE.ReinhardToneMapping;
+            this.renderer.toneMappingExposure = 2.0;
+            document.body.appendChild(this.renderer.domElement);
+
+            const composer = new EffectComposer(this.renderer);
+            composer.addPass(new RenderPass(this.scene, this.camera));
+            composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.4, 0.85));
+            this.composer = composer;
+
+            const env = new RoomEnvironment();
+            this.scene.environment = new THREE.PMREMGenerator(this.renderer).fromScene(env).texture;
+            this.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            this.mainGroup = new THREE.Group();
+            this.scene.add(this.mainGroup);
+
+            this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+            this.controls.enableDamping = true;
+        }
+
+        initParticles() {
+            this.particles = [];
+            for(let i=0; i<1000; i++) {
+                const p = new HolidayParticle(this.mainGroup, i%15===0?'cane':(i%5===0?'sphere':'box'));
+                const t = i/1000;
+                const angle = t * 40 * Math.PI;
+                const r = 10 * (1-t);
+                p.treePos.set(Math.cos(angle)*r, t*25-10, Math.sin(angle)*r);
+                this.particles.push(p);
+            }
+        }
+
+        async initAI() {
+            try {
+                // 修改为 jsdelivr 镜像路径，避开 Google 域名
+                const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+                this.handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: { 
+                        modelAssetPath: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/hand_landmarker.task",
+                        delegate: "GPU" 
+                    },
+                    runningMode: "VIDEO", numHands: 1
+                });
+
+                const video = document.getElementById('webcam');
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                video.addEventListener('loadeddata', () => {
+                    document.getElementById('loader').style.opacity = '0';
+                    setTimeout(() => document.getElementById('loader').remove(), 1000);
+                });
+            } catch (e) {
+                console.error("AI 加载失败:", e);
+                alert("摄像头启动失败，请检查是否使用了 HTTPS 访问或授予了权限。");
+            }
+        }
+
+        bindEvents() {
+            window.addEventListener('resize', () => {
+                this.camera.aspect = window.innerWidth/window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            window.addEventListener('keydown', (e) => {
+                if(e.key.toLowerCase()==='h') document.getElementById('ui-layer').classList.toggle('ui-hidden');
+            });
+        }
+
+        animate() {
+            requestAnimationFrame(() => this.animate());
+            const video = document.getElementById('webcam');
+            if (this.handLandmarker && video.readyState >= 2) {
+                const result = this.handLandmarker.detectForVideo(video, performance.now());
+                if (result.landmarks && result.landmarks[0]) {
+                    const lm = result.landmarks[0];
+                    const dist8_4 = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y);
+                    const avgDist = [8,12,16,20].reduce((s,i)=>s+Math.hypot(lm[i].x-lm[0].x, lm[i].y-lm[0].y),0)/4;
+                    
+                    if (dist8_4 < 0.05) STATE.MODE = 'FOCUS';
+                    else if (avgDist < 0.2) STATE.MODE = 'TREE';
+                    else if (avgDist > 0.4) STATE.MODE = 'SCATTER';
+                    
+                    this.mainGroup.rotation.y = THREE.MathUtils.lerp(this.mainGroup.rotation.y, (lm[9].x-0.5)*2, 0.1);
+                }
+            }
+            this.particles.forEach(p => p.update(STATE.MODE, null));
+            this.controls.update();
+            this.composer.render();
+        }
+    }
+    new App();
+</script>
+</body>
+</html>
