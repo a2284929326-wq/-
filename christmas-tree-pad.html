@@ -3,41 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>给黄海玲的圣诞魔法</title>
+    <title>给黄海玲的浓郁星空魔法</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: "PingFang SC", sans-serif; }
-        
-        /* 加载界面 */
         #loader { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s; }
-        .bar-bg { width: 200px; height: 4px; background: #222; border-radius: 10px; margin-top: 20px; overflow: hidden; }
-        #bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #b8860b, #d4af37); transition: width 0.4s; }
+        .bar-bg { width: 220px; height: 6px; background: #111; border-radius: 10px; margin-top: 20px; border: 1px solid #333; }
+        #bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #8b4513, #ff8c00); transition: width 0.4s; }
         
-        /* 金色祝福语：默认隐藏 */
         #blessing {
-            position: fixed; top: 18%; width: 100%; text-align: center;
-            color: #d4af37; font-size: 26px; font-weight: bold;
-            text-shadow: 0 0 15px rgba(212,175,55,0.8);
-            z-index: 5; pointer-events: none; 
-            opacity: 0; transform: translateY(20px); transition: all 1s ease;
+            position: fixed; top: 15%; width: 100%; text-align: center;
+            color: #ff9d00; font-size: 30px; font-weight: 900;
+            text-shadow: 0 0 20px rgba(255, 157, 0, 0.9), 0 0 40px rgba(255, 69, 0, 0.5);
+            z-index: 5; pointer-events: none; opacity: 0; transform: scale(0.8); transition: all 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        /* 照片容器：默认隐藏 */
         #photo-container {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
-            width: 220px; height: 220px; border-radius: 50%; border: 2px solid #d4af37;
-            box-shadow: 0 0 40px rgba(212,175,55,0.5); overflow: hidden; 
+            position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
+            width: 240px; height: 240px; border-radius: 50%; border: 3px solid #ff8c00;
+            box-shadow: 0 0 50px rgba(255, 140, 0, 0.6); overflow: hidden; 
             z-index: 4; background: #000; display: none; opacity: 0; transition: all 1s ease;
         }
-        #user-photo { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; }
+        #user-photo { width: 100%; height: 100%; object-fit: cover; filter: contrast(1.1); }
 
-        /* 相机上传按钮 */
         #upload-btn {
-            position: fixed; bottom: 30px; left: 30px; width: 45px; height: 45px;
-            background: rgba(212,175,55,0.15); border: 1px solid rgba(212,175,55,0.5); border-radius: 50%;
-            display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 10;
+            position: fixed; bottom: 35px; left: 35px; width: 50px; height: 50px;
+            background: rgba(255, 140, 0, 0.2); border: 2px solid #ff8c00; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; z-index: 10;
         }
-        
-        #ui-hint { position: fixed; bottom: 20px; width: 100%; text-align: center; color: rgba(212,175,55,0.4); font-size: 11px; pointer-events: none; }
     </style>
     <script type="importmap">
         {
@@ -51,20 +43,18 @@
 <body>
 
 <div id="loader">
-    <div style="color:#d4af37; font-size: 13px; letter-spacing: 2px;">FETCHING MAGIC...</div>
+    <div style="color:#ff8c00; font-size: 14px; letter-spacing: 3px; font-weight: bold;">CRAFTING GOLDEN MAGIC...</div>
     <div class="bar-bg"><div id="bar-fill"></div></div>
 </div>
 
 <div id="blessing">黄海玲 圣诞节快乐</div>
-
 <div id="photo-container"><img id="user-photo" src="" alt=""></div>
 
 <label id="upload-btn" for="photo-input">
-    <span style="font-size:20px;">📷</span>
+    <span style="font-size:24px;">📷</span>
     <input type="file" id="photo-input" accept="image/*" style="display:none">
 </label>
 
-<div id="ui-hint">捏合手指或点击屏幕解锁惊喜</div>
 <video id="webcam" style="display:none" autoplay playsinline></video>
 
 <script type="module">
@@ -76,41 +66,48 @@
 
     function initThree() {
         scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.012);
         camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 1, 1000);
-        camera.position.set(0, 5, 50);
+        camera.position.set(0, 5, 55);
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
 
         mainGroup = new THREE.Group();
         scene.add(mainGroup);
 
-        // 创建高级感粒子
+        // 创建高浓度发光粒子贴图
         const canvas = document.createElement('canvas');
-        canvas.width = 64; canvas.height = 64;
+        canvas.width = 128; canvas.height = 128;
         const ctx = canvas.getContext('2d');
-        const grad = ctx.createRadialGradient(32,32,0,32,32,32);
+        const grad = ctx.createRadialGradient(64,64,0,64,64,64);
         grad.addColorStop(0, 'rgba(255,255,255,1)');
+        grad.addColorStop(0.2, 'rgba(255,200,50,0.9)');
+        grad.addColorStop(0.5, 'rgba(255,100,0,0.4)');
         grad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = grad; ctx.fillRect(0,0,64,64);
+        ctx.fillStyle = grad; ctx.fillRect(0,0,128,128);
         const texture = new THREE.CanvasTexture(canvas);
 
-        for(let i=0; i<850; i++) {
+        // 2500个粒子，颜色深浅交替
+        for(let i=0; i<2500; i++) {
             const mat = new THREE.PointsMaterial({
-                size: i % 10 === 0 ? 0.7 : 0.4,
+                size: i % 5 === 0 ? 0.8 : 0.4,
                 map: texture, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
-                color: i % 20 === 0 ? 0xffffff : 0xd4af37
+                color: i % 30 === 0 ? 0xff3300 : (i % 10 === 0 ? 0xffffff : 0xff9900)
             });
             const p = new THREE.Points(new THREE.BufferGeometry(), mat);
             p.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
             
-            const t = i / 850;
-            const angle = t * Math.PI * 38;
-            const r = 12 * (1 - t);
-            p.userData.treePos = new THREE.Vector3(Math.cos(angle)*r, t*30 - 15, Math.sin(angle)*r);
-            p.userData.scatterPos = new THREE.Vector3().setFromSphericalCoords(25 + Math.random()*5, Math.random()*Math.PI, Math.random()*Math.PI*2);
+            const t = i / 2500;
+            const angle = t * Math.PI * 60;
+            const r = 15 * (1 - t);
+            p.userData.treePos = new THREE.Vector3(Math.cos(angle)*r, t*36 - 18, Math.sin(angle)*r);
+            // 星空模式半径加大，颜色更深
+            p.userData.scatterPos = new THREE.Vector3().setFromSphericalCoords(
+                30 + Math.random()*15, Math.random()*Math.PI, Math.random()*Math.PI*2
+            );
             
             p.position.copy(p.userData.treePos);
             mainGroup.add(p);
@@ -138,7 +135,7 @@
         const bar = document.getElementById('bar-fill');
         try {
             const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
-            bar.style.width = '60%';
+            bar.style.width = '50%';
             STATE.handLandmarker = await HandLandmarker.createFromOptions(vision, {
                 baseOptions: { modelAssetPath: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/hand_landmarker.task", delegate: "GPU" },
                 runningMode: "VIDEO", numHands: 1
@@ -156,34 +153,24 @@
         }
     }
 
-    function updateOverlay() {
-        const blessing = document.getElementById('blessing');
-        const container = document.getElementById('photo-container');
-        
-        // 核心惊喜逻辑：只有在散球模式(SCATTER)才显示文字和照片
-        if (STATE.MODE === 'SCATTER') {
-            blessing.style.opacity = '1';
-            blessing.style.transform = 'translateY(0)';
-            if (STATE.hasPhoto) {
-                container.style.display = 'block';
-                setTimeout(() => {
-                    container.style.opacity = '1';
-                    container.style.transform = 'translate(-50%, -50%) scale(1)';
-                }, 10);
-            }
-        } else {
-            // 回到树模式(TREE)，全部隐藏
-            blessing.style.opacity = '0';
-            blessing.style.transform = 'translateY(20px)';
-            container.style.opacity = '0';
-            container.style.transform = 'translate(-50%, -50%) scale(0.8)';
-            setTimeout(() => { if(STATE.MODE==='TREE') container.style.display = 'none'; }, 1000);
-        }
-    }
-
     function animate() {
         requestAnimationFrame(animate);
-        updateOverlay();
+        const blessing = document.getElementById('blessing');
+        const container = document.getElementById('photo-container');
+
+        if (STATE.MODE === 'SCATTER') {
+            blessing.style.opacity = '1';
+            blessing.style.transform = 'scale(1)';
+            if (STATE.hasPhoto) {
+                container.style.display = 'block';
+                setTimeout(() => { container.style.opacity = '1'; container.style.transform = 'translate(-50%, -50%) scale(1.1)'; }, 10);
+            }
+        } else {
+            blessing.style.opacity = '0';
+            blessing.style.transform = 'scale(0.8)';
+            container.style.opacity = '0';
+            setTimeout(() => { if(STATE.MODE==='TREE') container.style.display = 'none'; }, 800);
+        }
 
         if (STATE.isAIActive) {
             const video = document.getElementById('webcam');
@@ -192,18 +179,18 @@
                 if (results.landmarks && results.landmarks[0]) {
                     const lm = results.landmarks[0];
                     const dist = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y);
-                    STATE.MODE = dist < 0.07 ? 'TREE' : 'SCATTER';
-                    mainGroup.rotation.y = THREE.MathUtils.lerp(mainGroup.rotation.y, (lm[9].x - 0.5) * 3, 0.1);
+                    STATE.MODE = dist < 0.08 ? 'TREE' : 'SCATTER';
+                    mainGroup.rotation.y = THREE.MathUtils.lerp(mainGroup.rotation.y, (lm[9].x - 0.5) * 4, 0.1);
                 }
             }
         }
 
         particles.forEach(p => {
             const target = STATE.MODE === 'TREE' ? p.userData.treePos : p.userData.scatterPos;
-            p.position.lerp(target, 0.06);
+            p.position.lerp(target, 0.04); // 稍微变慢，增加流沙质感
         });
 
-        mainGroup.rotation.y += 0.005;
+        mainGroup.rotation.y += 0.003;
         renderer.render(scene, camera);
     }
 
