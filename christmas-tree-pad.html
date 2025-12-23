@@ -3,20 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>华丽版手势圣诞树</title>
+    <title>给黄海玲的圣诞魔法</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #050505; overflow: hidden; font-family: -apple-system, sans-serif; }
-        #loader-ui {
-            position: fixed; inset: 0; background: #000; z-index: 100;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            transition: opacity 1s ease;
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: "PingFang SC", sans-serif; }
+        #loader { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s; }
+        .bar-bg { width: 200px; height: 4px; background: #222; border-radius: 2px; margin-top: 20px; }
+        #bar-fill { width: 0%; height: 100%; background: #d4af37; transition: width 0.3s; }
+        
+        /* 金色祝福语样式 */
+        #blessing {
+            position: fixed; top: 15%; width: 100%; text-align: center;
+            color: #d4af37; font-size: 28px; font-weight: bold;
+            text-shadow: 0 0 15px rgba(212,175,55,0.8);
+            z-index: 5; pointer-events: none; opacity: 0; transition: opacity 2s;
         }
-        .progress-container { width: 200px; height: 4px; background: #222; border-radius: 2px; margin-top: 20px; overflow: hidden; }
-        #progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #d4af37, #fff); transition: width 0.3s; }
-        #status-text { color: #d4af37; font-size: 14px; margin-top: 15px; letter-spacing: 1px; }
-        #ui-hint {
-            position: fixed; bottom: 30px; width: 100%; text-align: center;
-            color: rgba(212,175,55,0.6); font-size: 12px; z-index: 10; pointer-events: none;
+
+        /* 照片展示区域 */
+        #photo-container {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 200px; height: 200px; border-radius: 50%; border: 2px solid #d4af37;
+            box-shadow: 0 0 30px #d4af37; overflow: hidden; display: none; z-index: 4;
+            background: #000;
+        }
+        #user-photo { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+
+        /* 上传按钮样式 */
+        #upload-label {
+            position: fixed; bottom: 30px; left: 30px; width: 50px; height: 50px;
+            background: rgba(212,175,55,0.2); border: 1px solid #d4af37; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 10;
         }
     </style>
     <script type="importmap">
@@ -30,12 +45,20 @@
 </head>
 <body>
 
-<div id="loader-ui">
-    <div id="status-text">准备节日魔法...</div>
-    <div class="progress-container"><div id="progress-bar"></div></div>
+<div id="loader">
+    <div style="color:#d4af37">准备惊喜中...</div>
+    <div class="bar-bg"><div id="bar-fill"></div></div>
 </div>
 
-<div id="ui-hint">等待 AI 加载或直接点击屏幕切换</div>
+<div id="blessing">黄海玲 圣诞节快乐</div>
+
+<div id="photo-container"><img id="user-photo" src="" alt=""></div>
+
+<label id="upload-label" for="photo-input">
+    <span style="font-size:24px;">📷</span>
+    <input type="file" id="photo-input" accept="image/*" style="display:none">
+</label>
+
 <video id="webcam" style="display:none" autoplay playsinline></video>
 
 <script type="module">
@@ -45,13 +68,11 @@
     let scene, camera, renderer, mainGroup, particles = [];
     let STATE = { MODE: 'TREE', handLandmarker: null, isAIActive: false };
 
-    // --- 1. 场景精致化初始化 ---
+    // 1. 初始化 3D 场景
     function initThree() {
         scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x000000, 0.015);
-        
         camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 1, 1000);
-        camera.position.set(0, 10, 50);
+        camera.position.set(0, 5, 50);
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -61,110 +82,86 @@
         mainGroup = new THREE.Group();
         scene.add(mainGroup);
 
-        // 创建发光贴图
-        const sprite = new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/circle.png');
-
-        // 生成精致树形态 (800个粒子)
+        // 创建粒子
+        const geo = new THREE.SphereGeometry(0.3, 8, 8);
         for(let i=0; i<800; i++) {
-            const material = new THREE.PointsMaterial({
-                size: 0.6,
-                map: sprite,
-                transparent: true,
-                blending: THREE.AdditiveBlending,
-                color: i % 20 === 0 ? 0xff4444 : (i % 5 === 0 ? 0xffffff : 0xd4af37)
+            const mat = new THREE.MeshBasicMaterial({ 
+                color: i % 15 === 0 ? 0xffffff : 0xd4af37,
+                transparent: true, opacity: 0.8 
             });
-
-            const p = new THREE.Points(new THREE.BufferGeometry(), material);
-            const pos = new THREE.Vector3();
-            p.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
-            
-            // 圣诞树数学模型
+            const p = new THREE.Mesh(geo, mat);
             const t = i / 800;
             const angle = t * Math.PI * 36;
             const r = 12 * (1 - t);
             p.userData.treePos = new THREE.Vector3(Math.cos(angle)*r, t*30 - 15, Math.sin(angle)*r);
             p.userData.scatterPos = new THREE.Vector3().setFromSphericalCoords(25, Math.random()*Math.PI, Math.random()*Math.PI*2);
-            
-            p.position.copy(p.userData.scatterPos);
+            p.position.copy(p.userData.treePos);
             mainGroup.add(p);
             particles.push(p);
         }
 
-        window.addEventListener('click', () => STATE.MODE = STATE.MODE === 'TREE' ? 'SCATTER' : 'TREE');
-        window.addEventListener('resize', onWindowResize);
+        // 处理照片上传
+        document.getElementById('photo-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    document.getElementById('user-photo').src = event.target.result;
+                    document.getElementById('photo-container').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
         animate();
     }
 
-    // --- 2. 增加下载进度条逻辑 ---
+    // 2. 加载 AI 模型
     async function initAI() {
-        const progressBar = document.getElementById('progress-bar');
-        const statusText = document.getElementById('status-text');
-
+        const bar = document.getElementById('bar-fill');
         try {
-            statusText.innerText = "正在请求摄像头...";
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-            document.getElementById('webcam').srcObject = stream;
-            progressBar.style.width = '30%';
-
-            statusText.innerText = "下载 AI 识别库...";
             const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
-            progressBar.style.width = '60%';
-
-            statusText.innerText = "加载识别模型 (约15MB)...";
+            bar.style.width = '50%';
             STATE.handLandmarker = await HandLandmarker.createFromOptions(vision, {
-                baseOptions: { 
-                    modelAssetPath: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/hand_landmarker.task",
-                    delegate: "GPU" 
-                },
-                runningMode: "VIDEO", numHands: 1
+                baseOptions: { modelAssetPath: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/hand_landmarker.task" },
+                runningMode: "VIDEO"
             });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            document.getElementById('webcam').srcObject = stream;
             
-            progressBar.style.width = '100%';
-            statusText.innerText = "魔法就绪！";
-            
+            bar.style.width = '100%';
             setTimeout(() => {
-                document.getElementById('loader-ui').style.opacity = '0';
-                setTimeout(() => document.getElementById('loader-ui').remove(), 1000);
+                document.getElementById('loader').style.opacity = '0';
+                document.getElementById('blessing').style.opacity = '1';
+                setTimeout(() => document.getElementById('loader').remove(), 1000);
                 STATE.isAIActive = true;
             }, 500);
-
         } catch (e) {
-            statusText.innerText = "摄像头启动失败，切换手动模式";
-            setTimeout(() => document.getElementById('loader-ui').remove(), 2000);
+            document.getElementById('loader').remove();
+            document.getElementById('blessing').style.opacity = '1';
         }
     }
 
     function animate() {
         requestAnimationFrame(animate);
-        
-        // AI 逻辑
         if (STATE.isAIActive) {
             const video = document.getElementById('webcam');
             if (video.readyState >= 2) {
-                const results = STATE.handLandmarker.detectForVideo(video, performance.now());
-                if (results.landmarks && results.landmarks[0]) {
-                    const lm = results.landmarks[0];
+                const res = STATE.handLandmarker.detectForVideo(video, performance.now());
+                if (res.landmarks && res.landmarks[0]) {
+                    const lm = res.landmarks[0];
                     const dist = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y);
                     STATE.MODE = dist < 0.06 ? 'TREE' : 'SCATTER';
                     mainGroup.rotation.y = THREE.MathUtils.lerp(mainGroup.rotation.y, (lm[9].x - 0.5) * 2, 0.1);
                 }
             }
         }
-
-        // 粒子平滑动画
         particles.forEach(p => {
             const target = STATE.MODE === 'TREE' ? p.userData.treePos : p.userData.scatterPos;
             p.position.lerp(target, 0.05);
         });
-
         mainGroup.rotation.y += 0.005;
         renderer.render(scene, camera);
-    }
-
-    function onWindowResize() {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
     initThree();
