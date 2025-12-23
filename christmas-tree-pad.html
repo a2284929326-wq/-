@@ -6,36 +6,30 @@
     <title>给黄海玲的圣诞魔法</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
-        #video-input { position: fixed; width: 1px; height: 1px; opacity: 0; }
+        #video-input { position: fixed; width: 80px; height: 60px; bottom: 10px; right: 10px; z-index: 1000; border-radius: 8px; border: 1px solid #ffcc33; transform: scaleX(-1); opacity: 0.3; }
         
-        /* 状态指示灯：帮助你确认摄像头是否在工作 */
-        #status-dot { position: fixed; top: 10px; left: 10px; width: 8px; height: 8px; border-radius: 50%; background: red; z-index: 1000; transition: background 0.3s; }
-        #status-text { position: fixed; top: 8px; left: 25px; color: #fff; font-size: 10px; z-index: 1000; opacity: 0.5; }
+        #status-bar { position: fixed; top: 15px; left: 15px; display: flex; align-items: center; z-index: 1000; background: rgba(0,0,0,0.5); padding: 5px 12px; border-radius: 20px; }
+        #status-dot { width: 10px; height: 10px; border-radius: 50%; background: #ffcc33; margin-right: 8px; box-shadow: 0 0 10px #ffcc33; }
+        #status-text { color: #fff; font-size: 12px; letter-spacing: 1px; }
 
-        #loader { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #ffcc33; }
-        .spinner { width: 30px; height: 30px; border: 2px solid rgba(255,204,51,0.2); border-top-color: #ffcc33; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        #blessing { position: fixed; top: 15%; width: 100%; text-align: center; background: linear-gradient(to bottom, #fff6ad 0%, #ffcc33 50%, #d4a017 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; font-weight: 900; z-index: 5; opacity: 0; transition: 0.8s; filter: drop-shadow(0 0 10px rgba(255, 204, 51, 0.8)); }
-        #photo-container { position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: 250px; height: 250px; border-radius: 50%; border: 4px solid #ffcc33; box-shadow: 0 0 50px rgba(212, 160, 23, 0.8); overflow: hidden; z-index: 4; display: none; opacity: 0; transition: 0.8s; }
+        #blessing { position: fixed; top: 15%; width: 100%; text-align: center; background: linear-gradient(to bottom, #fff6ad 0%, #ffcc33 50%, #d4a017 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; font-weight: 900; z-index: 5; opacity: 0; transition: 0.6s; }
+        #photo-container { position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: 260px; height: 260px; border-radius: 50%; border: 4px solid #ffcc33; box-shadow: 0 0 60px rgba(212, 160, 23, 0.9); overflow: hidden; z-index: 4; display: none; opacity: 0; transition: 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         #user-photo { width: 100%; height: 100%; object-fit: cover; }
-        #hint { position: fixed; bottom: 30px; width: 100%; text-align: center; color: #d4a017; font-size: 13px; z-index: 10; }
+        #hint { position: fixed; bottom: 80px; width: 100%; text-align: center; color: #d4a017; font-size: 14px; z-index: 10; font-weight: bold; text-shadow: 0 0 5px #000; }
     </style>
 
-    <script src="https://unpkg.com/@mediapipe/hands/hands.js"></script>
-    <script src="https://unpkg.com/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script type="importmap"> { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } } </script>
 </head>
 <body>
 
-<div id="status-dot"></div>
-<div id="status-text">感应器未连接</div>
+<div id="status-bar"><div id="status-dot"></div><div id="status-text">初始化中...</div></div>
 <video id="video-input" playsinline></video>
 
-<div id="loader"><div class="spinner"></div>正在连接手势感应器...</div>
 <div id="blessing">黄海玲 圣诞节快乐</div>
-<div id="photo-container"><img id="user-photo" src="https://raw.githubusercontent.com/a2284929326-wq/-/main/123456.jpg" alt="Surprise"></div>
-<div id="hint">请授权摄像头：合手为树 • 张手为星</div>
+<div id="photo-container"><img id="user-photo" src="https://raw.githubusercontent.com/a2284929326-wq/-/main/123456.jpg"></div>
+<div id="hint">请举起手掌：合手为树 • 张手为星</div>
 
 <script type="module">
     import * as THREE from 'three';
@@ -43,12 +37,11 @@
     let scene, camera, renderer, mainGroup, particles = [];
     let STATE = { MODE: 'TREE' };
 
-    // --- 3D 场景初始化 ---
     function initThree() {
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 1, 1000);
-        camera.position.z = 55;
-        renderer = new THREE.WebGLRenderer({ antialias: true });
+        camera.position.z = 60;
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
@@ -60,19 +53,19 @@
         canvas.width = 64; canvas.height = 64;
         const ctx = canvas.getContext('2d');
         const grad = ctx.createRadialGradient(32,32,0,32,32,32);
-        grad.addColorStop(0, '#fff'); grad.addColorStop(0.3, '#ffd700'); grad.addColorStop(1, 'transparent');
+        grad.addColorStop(0, '#fff'); grad.addColorStop(0.4, '#ffcc33'); grad.addColorStop(1, 'transparent');
         ctx.fillStyle = grad; ctx.fillRect(0,0,64,64);
         const texture = new THREE.CanvasTexture(canvas);
 
         for(let i=0; i<3000; i++) {
-            const mat = new THREE.PointsMaterial({ size: Math.random()*0.8+0.3, map: texture, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, color: 0xffcc33 });
+            const mat = new THREE.PointsMaterial({ size: Math.random()*0.9+0.4, map: texture, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, color: 0xffcc33 });
             const p = new THREE.Points(new THREE.BufferGeometry(), mat);
             p.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
             const t = i / 3000;
-            const angle = t * Math.PI * 60;
-            const r = 16 * (1 - t);
-            p.userData.treePos = new THREE.Vector3(Math.cos(angle)*r, t*38 - 19, Math.sin(angle)*r);
-            p.userData.scatterPos = new THREE.Vector3().setFromSphericalCoords(35+Math.random()*5, Math.random()*Math.PI, Math.random()*Math.PI*2);
+            const angle = t * Math.PI * 65;
+            const r = 18 * (1 - t);
+            p.userData.treePos = new THREE.Vector3(Math.cos(angle)*r, t*42 - 21, Math.sin(angle)*r);
+            p.userData.scatterPos = new THREE.Vector3().setFromSphericalCoords(38+Math.random()*8, Math.random()*Math.PI, Math.random()*Math.PI*2);
             p.position.copy(p.userData.treePos);
             mainGroup.add(p);
             particles.push(p);
@@ -84,50 +77,48 @@
         requestAnimationFrame(animate);
         particles.forEach(p => {
             const target = STATE.MODE === 'TREE' ? p.userData.treePos : p.userData.scatterPos;
-            p.position.lerp(target, 0.08);
+            p.position.lerp(target, 0.1); 
         });
-        mainGroup.rotation.y += 0.005;
+        mainGroup.rotation.y += 0.006;
         renderer.render(scene, camera);
     }
 
-    // --- 手势控制逻辑 ---
     async function startTracking() {
         const videoElement = document.getElementById('video-input');
         const statusDot = document.getElementById('status-dot');
         const statusText = document.getElementById('status-text');
 
         const hands = new Hands({
-            locateFile: (file) => `https://unpkg.com/@mediapipe/hands/${file}`
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
         });
 
-        hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+        // 优化：平衡检测速度和准确率
+        hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.4, minTrackingConfidence: 0.4 });
 
         hands.onResults((results) => {
-            // 如果能检测到手，指示灯变绿
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 statusDot.style.background = '#00ff00';
+                statusDot.style.boxShadow = '0 0 15px #00ff00';
                 statusText.innerText = "感应中...";
+                
                 const landmarks = results.multiHandLandmarks[0];
-                // 判定是否张开：中指指尖高度低于第二个关节
-                const isOpen = landmarks[12].y < landmarks[10].y; 
+                // 简化判断：中指指尖(12) 高于 指根(9)
+                const isOpen = landmarks[12].y < landmarks[9].y;
                 toggleMagic(isOpen ? 'SCATTER' : 'TREE');
             } else {
                 statusDot.style.background = '#ffcc33';
-                statusText.innerText = "请举起手掌";
+                statusDot.style.boxShadow = '0 0 10px #ffcc33';
+                statusText.innerText = "等待手势...";
             }
         });
 
         const cam = new Camera(videoElement, {
             onFrame: async () => { await hands.send({image: videoElement}); },
-            width: 640, height: 480
+            width: 480, height: 360
         });
 
         cam.start().then(() => {
-            document.getElementById('loader').style.display = 'none';
-            statusDot.style.background = '#ffcc33';
-            statusText.innerText = "等待手势...";
-        }).catch(err => {
-            alert("摄像头启动失败，请确保使用 HTTPS 协议或本地服务器运行，并授予权限。");
+            statusText.innerText = "手势已就绪";
         });
     }
 
@@ -149,6 +140,13 @@
 
     initThree();
     startTracking();
+
+    // 处理窗口大小变化
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
 </script>
 </body>
 </html>
