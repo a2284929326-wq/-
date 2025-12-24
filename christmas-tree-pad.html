@@ -33,7 +33,7 @@
 <body>
     <div id="loader">
         <div class="spinner"></div>
-        <div style="color:var(--gold); margin-top:20px; letter-spacing:4px;">正在布置圣诞惊喜...</div>
+        <div style="color:var(--gold); margin-top:20px; letter-spacing:4px;">正在载入圣诞魔法...</div>
     </div>
 
     <div id="ui-container">
@@ -41,8 +41,8 @@
         <div class="upload-wrapper">
             <button class="btn-upload" onclick="document.getElementById('photo-input').click()">ADD MEMORIES</button>
             <div class="hint">
-                手势提示：握拳(圣诞树) | 张开(高清文字) | 捏合(看照片)<br>
-                滑动旋转 | 按 'H' 键隐藏UI
+                手势提示：手掌左右移动 = 旋转旋转 | 握拳 = 圣诞树 | 张开 = 文字<br>
+                滑动屏幕亦可旋转 | 捏合 = 聚焦照片
             </div>
             <input type="file" id="photo-input" hidden accept="image/*">
         </div>
@@ -62,13 +62,12 @@
             targetRotation: new THREE.Vector2(0, 0), 
             currentRotation: new THREE.Vector2(0, 0), 
             textPoints: [],
-            isDragging: false,
-            lastMousePos: new THREE.Vector2()
+            isDragging: false
         };
 
         const PARAMS = { 
-            particleCount: 3500, // 增加粒子数量以支持高清文字
-            gold: 0xd4af37, red: 0xaa0000, green: 0x052f05
+            particleCount: 3800, 
+            gold: 0xd4af37, red: 0xaa0000 
         };
 
         let scene, camera, renderer, composer, mainGroup, star;
@@ -93,7 +92,7 @@
             mainGroup = new THREE.Group();
             scene.add(mainGroup);
 
-            initTextPoints(); // 初始化高密度点阵
+            initTextPoints();
             createStar();
             createParticles();
             
@@ -110,22 +109,20 @@
             const ctx = canvas.getContext('2d');
             canvas.width = 1200; canvas.height = 300;
             ctx.fillStyle = 'white';
-            ctx.font = 'bold 100px "Microsoft YaHei", sans-serif'; // 粗体增强清晰度
+            ctx.font = 'bold 100px "Microsoft YaHei", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('黄海玲 圣诞快乐', 600, 150);
             
             const data = ctx.getImageData(0, 0, 1200, 300).data;
             STATE.textPoints = [];
-            const step = 2; // 高精度采样步长
-            for(let y=0; y<300; y+=step) {
-                for(let x=0; x<1200; x+=step) {
+            for(let y=0; y<300; y+=2) {
+                for(let x=0; x<1200; x+=2) {
                     if(data[(y*1200+x)*4 + 3] > 150) {
                         STATE.textPoints.push({ x: (x - 600) * 0.08, y: (150 - y) * 0.08 });
                     }
                 }
             }
-            STATE.textPoints.sort(() => Math.random() - 0.5); // 随机排序使汇聚自然
         }
 
         function createStar() {
@@ -153,12 +150,10 @@
         function setupControls() {
             window.addEventListener('pointermove', (e) => {
                 if(e.buttons > 0) {
+                    // 屏幕触摸旋转
                     STATE.targetRotation.y += e.movementX * 0.005;
                     STATE.targetRotation.x += e.movementY * 0.005;
                 }
-            });
-            window.addEventListener('keydown', (e) => {
-                if(e.key.toLowerCase() === 'h') document.getElementById('ui-container').classList.toggle('ui-hidden');
             });
             document.getElementById('photo-input').onchange = (e) => {
                 const url = URL.createObjectURL(e.target.files[0]);
@@ -196,16 +191,27 @@
                 const results = handLandmarker.detectForVideo(document.getElementById('webcam'), performance.now());
                 if (results.landmarks && results.landmarks[0]) {
                     const lm = results.landmarks[0];
+                    
+                    // --- 手势旋转逻辑 ---
+                    // 使用掌心 (landmark 9) 的 X 坐标来控制左右旋转
+                    // 摄像头画面是镜像的，所以用 (0.5 - lm[9].x)
+                    const palmX = (0.5 - lm[9].x) * 2; // 映射到约 -1 到 1
+                    const palmY = (lm[9].y - 0.5) * 2;
+                    STATE.targetRotation.y = palmX * Math.PI; // 最大旋转 180 度
+                    STATE.targetRotation.x = palmY * (Math.PI / 4); // 仰角控制在 45 度
+
+                    // 形态切换逻辑
                     const openDist = Math.hypot(lm[8].x - lm[0].x, lm[8].y - lm[0].y);
                     const pinchDist = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y);
                     
-                    if (openDist < 0.18) STATE.mode = 'TREE'; // 握拳
-                    else if (pinchDist < 0.04) STATE.mode = 'FOCUS'; // 捏合
-                    else if (openDist > 0.35) STATE.mode = 'TEXT'; // 张开
+                    if (openDist < 0.18) STATE.mode = 'TREE';
+                    else if (pinchDist < 0.04) STATE.mode = 'FOCUS';
+                    else if (openDist > 0.35) STATE.mode = 'TEXT';
                 }
             }
 
-            STATE.currentRotation.lerp(STATE.targetRotation, 0.05);
+            // 平滑旋转应用
+            STATE.currentRotation.lerp(STATE.targetRotation, 0.08);
             mainGroup.rotation.set(STATE.currentRotation.x, STATE.currentRotation.y, 0);
 
             star.position.y = (STATE.mode === 'TREE') ? 18 : -50;
@@ -219,17 +225,17 @@
                 } else if (STATE.mode === 'TREE') {
                     const t = i / PARAMS.particleCount;
                     const r = 16 * (1 - t);
-                    const angle = t * Math.PI * 40 + time;
+                    const angle = t * Math.PI * 40; // 树形态本身不再自动旋转，靠手势控制
                     target = new THREE.Vector3(Math.cos(angle) * r, t * 35 - 15, Math.sin(angle) * r);
                 } else if (STATE.mode === 'TEXT') {
                     if (i < STATE.textPoints.length) {
                         const pt = STATE.textPoints[i];
                         target = new THREE.Vector3(pt.x, pt.y + 5, 5);
                     } else {
-                        target = p.seed; // 多余粒子作为背景
+                        target = p.seed;
                     }
                 } else {
-                    target = p.seed.clone().multiplyScalar(1.5);
+                    target = p.seed.clone().multiplyScalar(1.2);
                 }
                 
                 p.mesh.position.lerp(target, 0.07);
