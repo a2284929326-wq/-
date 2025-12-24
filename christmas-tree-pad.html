@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Merry Christmas for 黄海玲</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <style>
@@ -17,7 +17,6 @@
         #loader { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; transition: opacity 1s; }
         .spinner { width: 40px; height: 40px; border: 2px solid rgba(212, 175, 55, 0.1); border-top: 2px solid var(--gold); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        /* 摄像头预览预览（调试用，正式可隐藏） */
         #video-container { position: absolute; bottom: 10px; right: 10px; width: 120px; height: 90px; border: 1px solid var(--gold); border-radius: 8px; overflow: hidden; opacity: 0.5; z-index: 5; }
         #webcam { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
     </style>
@@ -43,7 +42,7 @@
             <button class="btn-upload" onclick="document.getElementById('photo-input').click()">ADD MEMORIES</button>
             <div class="hint">
                 手势：张开(散开) | 握拳(树) | 捏合(聚焦照片)<br>
-                滑动旋转 | 按 'H' 隐藏界面
+                <b>点击屏幕中心：切换树/文字</b> | 滑动旋转
             </div>
             <input type="file" id="photo-input" hidden accept="image/*">
         </div>
@@ -65,12 +64,11 @@
             currentRotation: new THREE.Vector2(0, 0), 
             textPoints: [],
             isDragging: false,
-            lastMousePos: new THREE.Vector2(),
-            focusedPhoto: null
+            lastMousePos: new THREE.Vector2()
         };
 
         const PARAMS = { 
-            particleCount: 2000, 
+            particleCount: 2200, 
             gold: 0xd4af37, red: 0xaa0000, green: 0x052f05,
             githubPhoto: 'https://raw.githubusercontent.com/a2284929326-wq/-/main/123456.jpg'
         };
@@ -98,9 +96,7 @@
 
             const pmrem = new THREE.PMREMGenerator(renderer);
             scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-            const sun = new THREE.DirectionalLight(0xffffff, 1); sun.position.set(5, 10, 7); scene.add(sun);
-
+            
             mainGroup = new THREE.Group();
             scene.add(mainGroup);
 
@@ -114,7 +110,6 @@
             
             document.getElementById('loader').style.opacity = '0';
             setTimeout(() => document.getElementById('loader').remove(), 1000);
-            
             animate();
         }
 
@@ -138,12 +133,12 @@
             const ctx = canvas.getContext('2d');
             canvas.width = 600; canvas.height = 150;
             ctx.fillStyle = 'white';
-            ctx.font = 'bold 50px sans-serif';
+            ctx.font = 'bold 55px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('黄海玲圣诞节快乐', 300, 80);
             const data = ctx.getImageData(0, 0, 600, 150).data;
-            for(let y=0; y<150; y+=4) {
-                for(let x=0; x<600; x+=4) {
+            for(let y=0; y<150; y+=3) {
+                for(let x=0; x<600; x+=3) {
                     if(data[(y*600+x)*4 + 3] > 128) {
                         STATE.textPoints.push({ x: (x - 300) * 0.12, y: (75 - y) * 0.12 });
                     }
@@ -152,7 +147,7 @@
         }
 
         function createParticles() {
-            const geometries = [new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.SphereGeometry(0.3, 12, 12)];
+            const geometries = [new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.SphereGeometry(0.3, 8, 8)];
             const materials = [
                 new THREE.MeshStandardMaterial({ color: PARAMS.gold, metalness: 0.8 }),
                 new THREE.MeshStandardMaterial({ color: PARAMS.green }),
@@ -163,9 +158,8 @@
                 mainGroup.add(mesh);
                 particles.push({
                     mesh,
-                    seed: new THREE.Vector3().randomDirection().multiplyScalar(15 + Math.random() * 15),
-                    targetPos: new THREE.Vector3(),
-                    velocity: new THREE.Vector3((Math.random()-0.5)*0.2, (Math.random()-0.5)*0.2, (Math.random()-0.5)*0.2)
+                    seed: new THREE.Vector3().randomDirection().multiplyScalar(20 + Math.random() * 15),
+                    targetPos: new THREE.Vector3()
                 });
             }
         }
@@ -181,38 +175,24 @@
                 frame.position.z = -0.1;
                 group.add(photo, frame);
                 mainGroup.add(group);
-                particles.push({ mesh: group, type: 'PHOTO', targetPos: new THREE.Vector3(), seed: new THREE.Vector3(10, 5, 5) });
+                particles.push({ mesh: group, type: 'PHOTO', targetPos: new THREE.Vector3(), seed: new THREE.Vector3(0, 0, 5) });
             });
         }
 
-        // --- 核心修复：手势判断算法 ---
         function processHandGestures(landmarks) {
             const thumbTip = landmarks[4];
             const indexTip = landmarks[8];
-            const middleTip = landmarks[12];
-            const ringTip = landmarks[16];
-            const pinkyTip = landmarks[20];
             const wrist = landmarks[0];
-
-            // 1. 计算手指到手腕的平均距离（判断握拳/张开）
-            const tips = [indexTip, middleTip, ringTip, pinkyTip];
+            const tips = [landmarks[8], landmarks[12], landmarks[16], landmarks[20]];
             let avgDist = 0;
             tips.forEach(t => avgDist += Math.hypot(t.x - wrist.x, t.y - wrist.y));
             avgDist /= 4;
-
-            // 2. 捏合判断 (食指拇指距离)
             const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
 
-            // 状态映射
-            if (avgDist < 0.15) {
-                STATE.mode = 'TREE'; // 握拳 -> 圣诞树
-            } else if (pinchDist < 0.04) {
-                STATE.mode = 'FOCUS'; // 捏合 -> 聚焦照片
-            } else if (avgDist > 0.35) {
-                STATE.mode = 'SCATTER'; // 张开 -> 散开文字
-            }
+            if (avgDist < 0.15) STATE.mode = 'TREE';
+            else if (pinchDist < 0.04) STATE.mode = 'FOCUS';
+            else if (avgDist > 0.35) STATE.mode = 'SCATTER';
 
-            // 掌心控制旋转 (使用中指根部点 9)
             const palm = landmarks[9];
             STATE.targetRotation.y = (palm.x - 0.5) * -3;
             STATE.targetRotation.x = (palm.y - 0.5) * 1.5;
@@ -226,31 +206,35 @@
                         modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
                         delegate: "GPU" 
                     },
-                    runningMode: "VIDEO",
-                    numHands: 1
+                    runningMode: "VIDEO", numHands: 1
                 });
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
-                const video = document.getElementById('webcam');
-                video.srcObject = stream;
-            } catch(e) { 
-                console.error("手势识别初始化失败:", e); 
-            }
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                document.getElementById('webcam').srcObject = stream;
+            } catch(e) { console.error(e); }
         }
 
         function setupControls() {
+            // 点击切换逻辑
+            window.addEventListener('click', (e) => {
+                // 如果点击的是上传按钮，不触发切换
+                if (e.target.tagName === 'BUTTON') return;
+                
+                // 循环切换：树 -> 文字 -> 树
+                if (STATE.mode === 'TREE') {
+                    STATE.mode = 'SCATTER';
+                } else {
+                    STATE.mode = 'TREE';
+                }
+            });
+
             window.addEventListener('pointerdown', (e) => { STATE.isDragging = true; STATE.lastMousePos.set(e.clientX, e.clientY); });
             window.addEventListener('pointerup', () => { STATE.isDragging = false; });
             window.addEventListener('pointermove', (e) => {
                 if (STATE.isDragging) {
-                    const deltaX = e.clientX - STATE.lastMousePos.x;
-                    const deltaY = e.clientY - STATE.lastMousePos.y;
-                    STATE.targetRotation.y += deltaX * 0.01;
-                    STATE.targetRotation.x += deltaY * 0.01;
+                    STATE.targetRotation.y += (e.clientX - STATE.lastMousePos.x) * 0.01;
+                    STATE.targetRotation.x += (e.clientY - STATE.lastMousePos.y) * 0.01;
                     STATE.lastMousePos.set(e.clientX, e.clientY);
                 }
-            });
-            window.addEventListener('keydown', (e) => {
-                if(e.key.toLowerCase() === 'h') document.getElementById('ui-container').classList.toggle('ui-hidden');
             });
             document.getElementById('photo-input').onchange = (e) => {
                 const reader = new FileReader();
@@ -262,15 +246,12 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            // 手势推理
             if (handLandmarker && document.getElementById('webcam').readyState >= 2) {
                 const video = document.getElementById('webcam');
                 if (video.currentTime !== lastVideoTime) {
                     lastVideoTime = video.currentTime;
                     const results = handLandmarker.detectForVideo(video, performance.now());
-                    if (results.landmarks && results.landmarks.length > 0) {
-                        processHandGestures(results.landmarks[0]);
-                    }
+                    if (results.landmarks?.length > 0) processHandGestures(results.landmarks[0]);
                 }
             }
 
@@ -278,46 +259,42 @@
             mainGroup.rotation.y = STATE.currentRotation.y;
             mainGroup.rotation.x = STATE.currentRotation.x;
 
-            star.position.y = 16.5;
+            star.position.y = (STATE.mode === 'TREE') ? 16.5 : -50;
             star.rotation.z += 0.02;
 
+            const time = performance.now() * 0.001;
             particles.forEach((p, i) => {
                 if (STATE.mode === 'TREE') {
                     const t = i / particles.length;
                     const r = 15 * (1 - t);
-                    const a = t * Math.PI * 45 + (performance.now() * 0.0005);
+                    const a = t * Math.PI * 45 + (time * 0.5);
                     p.targetPos.set(Math.cos(a) * r, t * 30 - 14, Math.sin(a) * r);
                 } else if (STATE.mode === 'SCATTER') {
                     if (i < STATE.textPoints.length) {
                         const pt = STATE.textPoints[i];
-                        p.targetPos.set(pt.x, pt.y + 5, 8);
+                        p.targetPos.set(pt.x, pt.y + 5, 5);
                     } else {
                         p.targetPos.copy(p.seed);
                     }
                 } else if (STATE.mode === 'FOCUS') {
-                    if (p.type === 'PHOTO') {
-                        p.targetPos.set(0, 5, 30); // 照片飞向相机
-                    } else {
-                        p.targetPos.copy(p.seed).multiplyScalar(1.5);
-                    }
+                    if (p.type === 'PHOTO') p.targetPos.set(0, 5, 25);
+                    else p.targetPos.copy(p.seed).multiplyScalar(1.5);
                 }
                 
-                p.mesh.position.lerp(p.targetPos, 0.05);
-                const pulse = Math.sin(performance.now() * 0.001 + i) * 0.1;
-                if(p.type !== 'PHOTO') p.mesh.position.y += pulse;
+                p.mesh.position.lerp(p.targetPos, 0.06);
+                if(p.type !== 'PHOTO') p.mesh.position.y += Math.sin(time + i) * 0.05;
             });
 
             composer.render();
         }
 
+        init();
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
             composer.setSize(window.innerWidth, window.innerHeight);
         });
-
-        init();
     </script>
 </body>
 </html>
